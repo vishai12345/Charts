@@ -92,8 +92,8 @@ class LineChart1ViewController: DemoBaseViewController {
 
         chartView.legend.form = .line
 
-        sliderX.value = 45
-        sliderY.value = 100
+        sliderX.value = 10
+        sliderY.value = 50
         slidersValueChanged(nil)
 
         chartView.animate(xAxisDuration: 2.5)
@@ -110,16 +110,20 @@ class LineChart1ViewController: DemoBaseViewController {
 
     func setDataCount(_ count: Int, range: UInt32) {
         let values = (0..<count).map { (i) -> ChartDataEntry in
-            let val = Double(arc4random_uniform(range) + 3)
-            return ChartDataEntry(x: Double(i), y: val, icon: #imageLiteral(resourceName: "icon"))
+            let val = Double(arc4random_uniform(range) + 10)
+            return ChartDataEntry(x: Double(i), y: val, icon: nil)
+        }
+        
+        let values1 = (0..<count).map { (i) -> ChartDataEntry in
+            let val = Double(arc4random_uniform(range) + 10)
+            return ChartDataEntry(x: Double(i), y: val, icon: nil)
         }
 
         let set1 = LineChartDataSet(entries: values, label: "DataSet 1")
-        set1.drawIconsEnabled = false
-        setup(set1)
+        let set2 = LineChartDataSet(entries: values1, label: "DataSet 2")
+        setup(set1, .red)
+        setup(set2, .green)
 
-        let value = ChartDataEntry(x: Double(3), y: 3)
-        set1.addEntryOrdered(value)
         let gradientColors = [ChartColorTemplates.colorFromString("#00ff0000").cgColor,
                               ChartColorTemplates.colorFromString("#ffff0000").cgColor]
         let gradient = CGGradient(colorsSpace: nil, colors: gradientColors as CFArray, locations: nil)!
@@ -127,13 +131,22 @@ class LineChart1ViewController: DemoBaseViewController {
         set1.fillAlpha = 1
         set1.fill = LinearGradientFill(gradient: gradient, angle: 90)
         set1.drawFilledEnabled = true
+        
+        let gradientColors1 = [ChartColorTemplates.colorFromString("#0000ff00").cgColor,
+                              ChartColorTemplates.colorFromString("#ffff0000").cgColor]
+        let gradient1 = CGGradient(colorsSpace: nil, colors: gradientColors1 as CFArray, locations: nil)!
 
-        let data = LineChartData(dataSet: set1)
+        set2.fillAlpha = 1
+        set2.fill = LinearGradientFill(gradient: gradient1, angle: 90)
+        set2.drawFilledEnabled = true
+
+        let data: LineChartData = [set1, set2]
+        data.setDrawValues(false)
 
         chartView.data = data
     }
 
-    private func setup(_ dataSet: LineChartDataSet) {
+    private func setup(_ dataSet: LineChartDataSet, _ color: NSUIColor) {
         if dataSet.isDrawLineWithGradientEnabled {
             dataSet.lineDashLengths = nil
             dataSet.highlightLineDashLengths = nil
@@ -141,25 +154,30 @@ class LineChart1ViewController: DemoBaseViewController {
             dataSet.setCircleColor(.black)
             dataSet.gradientPositions = [0, 40, 100]
             dataSet.lineWidth = 1
-            dataSet.circleRadius = 3
+            dataSet.circleRadius = 0
             dataSet.drawCircleHoleEnabled = false
             dataSet.valueFont = .systemFont(ofSize: 9)
             dataSet.formLineDashLengths = nil
             dataSet.formLineWidth = 1
             dataSet.formSize = 15
+            dataSet.drawValuesEnabled = false
+            dataSet.drawCirclesEnabled = false
         } else {
-            dataSet.lineDashLengths = [5, 2.5]
+            dataSet.lineDashLengths = nil
             dataSet.highlightLineDashLengths = [5, 2.5]
-            dataSet.setColor(.black)
+            dataSet.setColor(color)
             dataSet.setCircleColor(.black)
             dataSet.gradientPositions = nil
-            dataSet.lineWidth = 1
-            dataSet.circleRadius = 3
-            dataSet.drawCircleHoleEnabled = false
+            dataSet.lineWidth = 5
+            dataSet.circleRadius = 0
+            dataSet.drawCircleHoleEnabled = true
             dataSet.valueFont = .systemFont(ofSize: 9)
             dataSet.formLineDashLengths = [5, 2.5]
             dataSet.formLineWidth = 1
-            dataSet.formSize = 15
+            dataSet.formSize = 1
+            dataSet.drawValuesEnabled = false
+            dataSet.drawCirclesEnabled = false
+            dataSet.mode = .cubicBezier
         }
     }
 
@@ -199,7 +217,7 @@ class LineChart1ViewController: DemoBaseViewController {
         case .toggleGradientLine:
             for set in chartView.data!.dataSets as! [LineChartDataSet] {
                 set.isDrawLineWithGradientEnabled = !set.isDrawLineWithGradientEnabled
-                setup(set)
+                setup(set, .red)
             }
             chartView.setNeedsDisplay()
         default:
