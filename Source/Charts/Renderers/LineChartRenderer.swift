@@ -19,7 +19,7 @@ open class LineChartRenderer: LineRadarRenderer
     // NOTE: Unlike the other renderers, LineChartRenderer populates accessibleChartElements in drawCircles due to the nature of its drawing options.
     /// A nested array of elements ordered logically (i.e not in visual/drawing order) for use with VoiceOver.
     private lazy var accessibilityOrderedElements: [[NSUIAccessibilityElement]] = accessibilityCreateEmptyOrderedElements()
-
+    
     @objc open weak var dataProvider: LineChartDataProvider?
     
     @objc public init(dataProvider: LineChartDataProvider, animator: Animator, viewPortHandler: ViewPortHandler)
@@ -32,17 +32,22 @@ open class LineChartRenderer: LineRadarRenderer
     open override func drawData(context: CGContext)
     {
         guard let lineData = dataProvider?.lineData else { return }
-
+        
         let sets = lineData.dataSets as? [LineChartDataSet]
         assert(sets != nil, "Datasets for LineChartRenderer must conform to ILineChartDataSet")
-
-        let drawDataSet = { self.drawDataSet(context: context, dataSet: $0) }
+        
+        let drawDataSet = { self.drawDataSet(context: context, dataSet: $0, fill: true) }
+        let drawDataSet1 = { self.drawDataSet(context: context, dataSet: $0, fill: false) }
         sets!.lazy
             .filter(\.isVisible)
             .forEach(drawDataSet)
+        
+        sets!.lazy
+            .filter(\.isVisible)
+            .forEach(drawDataSet1)
     }
     
-    @objc open func drawDataSet(context: CGContext, dataSet: LineChartDataSetProtocol)
+    @objc open func drawDataSet(context: CGContext, dataSet: LineChartDataSetProtocol, fill: Bool)
     {
         if dataSet.entryCount < 1
         {
@@ -68,18 +73,18 @@ open class LineChartRenderer: LineRadarRenderer
         {
         case .linear: fallthrough
         case .stepped:
-            drawLinear(context: context, dataSet: dataSet)
+            drawLinear(context: context, dataSet: dataSet, fill: fill)
             
         case .cubicBezier:
-            drawCubicBezier(context: context, dataSet: dataSet)
+            drawCubicBezier(context: context, dataSet: dataSet, fill: fill)
             
         case .horizontalBezier:
-            drawHorizontalBezier(context: context, dataSet: dataSet)
+            drawHorizontalBezier(context: context, dataSet: dataSet, fill: fill)
         }
         
         context.restoreGState()
     }
-
+    
     private func drawLine(
         context: CGContext,
         spline: CGMutablePath,
@@ -91,7 +96,7 @@ open class LineChartRenderer: LineRadarRenderer
         context.strokePath()
     }
     
-    @objc open func drawCubicBezier(context: CGContext, dataSet: LineChartDataSetProtocol)
+    @objc open func drawCubicBezier(context: CGContext, dataSet: LineChartDataSetProtocol, fill: Bool)
     {
         guard let dataProvider = dataProvider else { return }
         
@@ -167,26 +172,31 @@ open class LineChartRenderer: LineRadarRenderer
         
         context.saveGState()
         defer { context.restoreGState() }
-
-        if dataSet.isDrawFilledEnabled
+        
+        if fill
         {
-            // Copy this path because we make changes to it
-            let fillPath = cubicPath.mutableCopy()
-            
-            drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
-        }
-
-        if dataSet.isDrawLineWithGradientEnabled
-        {
-            drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
+            if dataSet.isDrawFilledEnabled
+            {
+                // Copy this path because we make changes to it
+                let fillPath = cubicPath.mutableCopy()
+                
+                drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
+            }
         }
         else
         {
-            drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            if dataSet.isDrawLineWithGradientEnabled
+            {
+                drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
+            }
+            else
+            {
+                drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            }
         }
     }
     
-    @objc open func drawHorizontalBezier(context: CGContext, dataSet: LineChartDataSetProtocol)
+    @objc open func drawHorizontalBezier(context: CGContext, dataSet: LineChartDataSetProtocol, fill: Bool)
     {
         guard let dataProvider = dataProvider else { return }
         
@@ -238,21 +248,27 @@ open class LineChartRenderer: LineRadarRenderer
         context.saveGState()
         defer { context.restoreGState() }
         
-        if dataSet.isDrawFilledEnabled
+        if fill
         {
-            // Copy this path because we make changes to it
-            let fillPath = cubicPath.mutableCopy()
+            if dataSet.isDrawFilledEnabled
+            {
+                // Copy this path because we make changes to it
+                let fillPath = cubicPath.mutableCopy()
+                
+                drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
+            }
             
-            drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
-        }
-
-        if dataSet.isDrawLineWithGradientEnabled
-        {
-            drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
         }
         else
         {
-            drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            if dataSet.isDrawLineWithGradientEnabled
+            {
+                drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
+            }
+            else
+            {
+                drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            }
         }
     }
     
@@ -273,7 +289,7 @@ open class LineChartRenderer: LineRadarRenderer
         }
         
         let fillMin = dataSet.fillFormatter?.getFillLinePosition(dataSet: dataSet, dataProvider: dataProvider) ?? 0.0
-
+        
         var pt1 = CGPoint(x: CGFloat(dataSet.entryForIndex(bounds.min + bounds.range)?.x ?? 0.0), y: fillMin)
         var pt2 = CGPoint(x: CGFloat(dataSet.entryForIndex(bounds.min)?.x ?? 0.0), y: fillMin)
         pt1 = pt1.applying(matrix)
@@ -295,7 +311,7 @@ open class LineChartRenderer: LineRadarRenderer
     
     private var _lineSegments = [CGPoint](repeating: CGPoint(), count: 2)
     
-    @objc open func drawLinear(context: CGContext, dataSet: LineChartDataSetProtocol)
+    @objc open func drawLinear(context: CGContext, dataSet: LineChartDataSetProtocol, fill: Bool)
     {
         guard let dataProvider = dataProvider else { return }
         
@@ -312,140 +328,145 @@ open class LineChartRenderer: LineRadarRenderer
         _xBounds.set(chart: dataProvider, dataSet: dataSet, animator: animator)
         
         // if drawing filled is enabled
-        if dataSet.isDrawFilledEnabled && entryCount > 0
-        {
-            drawLinearFill(context: context, dataSet: dataSet, trans: trans, bounds: _xBounds)
-        }
-        
-        context.saveGState()
-        defer { context.restoreGState() }
-
-        // more than 1 color
-        if dataSet.colors.count > 1, !dataSet.isDrawLineWithGradientEnabled
-        {
-            if _lineSegments.count != pointsPerEntryPair
+        if fill {
+            if dataSet.isDrawFilledEnabled && entryCount > 0
             {
-                // Allocate once in correct size
-                _lineSegments = [CGPoint](repeating: CGPoint(), count: pointsPerEntryPair)
-            }
-
-            for j in _xBounds.dropLast()
-            {
-                var e: ChartDataEntry! = dataSet.entryForIndex(j)
-                
-                if e == nil { continue }
-                
-                _lineSegments[0].x = CGFloat(e.x)
-                _lineSegments[0].y = CGFloat(e.y * phaseY)
-                
-                if j < _xBounds.max
-                {
-                    // TODO: remove the check.
-                    // With the new XBounds iterator, j is always smaller than _xBounds.max
-                    // Keeping this check for a while, if xBounds have no further breaking changes, it should be safe to remove the check
-                    e = dataSet.entryForIndex(j + 1)
-                    
-                    if e == nil { break }
-                    
-                    if isDrawSteppedEnabled
-                    {
-                        _lineSegments[1] = CGPoint(x: CGFloat(e.x), y: _lineSegments[0].y)
-                        _lineSegments[2] = _lineSegments[1]
-                        _lineSegments[3] = CGPoint(x: CGFloat(e.x), y: CGFloat(e.y * phaseY))
-                    }
-                    else
-                    {
-                        _lineSegments[1] = CGPoint(x: CGFloat(e.x), y: CGFloat(e.y * phaseY))
-                    }
-                }
-                else
-                {
-                    _lineSegments[1] = _lineSegments[0]
-                }
-
-                _lineSegments = _lineSegments.map { $0.applying(valueToPixelMatrix) }
-
-                if (!viewPortHandler.isInBoundsRight(_lineSegments[0].x))
-                {
-                    break
-                }
-
-                // Determine the start and end coordinates of the line, and make sure they differ.
-                guard
-                    let firstCoordinate = _lineSegments.first,
-                    let lastCoordinate = _lineSegments.last,
-                    firstCoordinate != lastCoordinate else { continue }
-                
-                // make sure the lines don't do shitty things outside bounds
-                if !viewPortHandler.isInBoundsLeft(lastCoordinate.x) ||
-                    !viewPortHandler.isInBoundsTop(max(firstCoordinate.y, lastCoordinate.y)) ||
-                    !viewPortHandler.isInBoundsBottom(min(firstCoordinate.y, lastCoordinate.y))
-                {
-                    continue
-                }
-                
-                // get the color that is set for this line-segment
-                context.setStrokeColor(dataSet.color(atIndex: j).cgColor)
-                context.strokeLineSegments(between: _lineSegments)
+                drawLinearFill(context: context, dataSet: dataSet, trans: trans, bounds: _xBounds)
             }
         }
         else
-        { // only one color per dataset
-            guard dataSet.entryForIndex(_xBounds.min) != nil else {
-                return
-            }
-
-            var firstPoint = true
-
-            let path = CGMutablePath()
-            for x in stride(from: _xBounds.min, through: _xBounds.range + _xBounds.min, by: 1)
+        {
+            
+            context.saveGState()
+            defer { context.restoreGState() }
+            
+            // more than 1 color
+            if dataSet.colors.count > 1, !dataSet.isDrawLineWithGradientEnabled
             {
-                guard let e1 = dataSet.entryForIndex(x == 0 ? 0 : (x - 1)) else { continue }
-                guard let e2 = dataSet.entryForIndex(x) else { continue }
-                
-                let startPoint =
-                    CGPoint(
-                        x: CGFloat(e1.x),
-                        y: CGFloat(e1.y * phaseY))
-                    .applying(valueToPixelMatrix)
-                
-                if firstPoint
+                if _lineSegments.count != pointsPerEntryPair
                 {
-                    path.move(to: startPoint)
-                    firstPoint = false
-                }
-                else
-                {
-                    path.addLine(to: startPoint)
+                    // Allocate once in correct size
+                    _lineSegments = [CGPoint](repeating: CGPoint(), count: pointsPerEntryPair)
                 }
                 
-                if isDrawSteppedEnabled
+                for j in _xBounds.dropLast()
                 {
-                    let steppedPoint =
+                    var e: ChartDataEntry! = dataSet.entryForIndex(j)
+                    
+                    if e == nil { continue }
+                    
+                    _lineSegments[0].x = CGFloat(e.x)
+                    _lineSegments[0].y = CGFloat(e.y * phaseY)
+                    
+                    if j < _xBounds.max
+                    {
+                        // TODO: remove the check.
+                        // With the new XBounds iterator, j is always smaller than _xBounds.max
+                        // Keeping this check for a while, if xBounds have no further breaking changes, it should be safe to remove the check
+                        e = dataSet.entryForIndex(j + 1)
+                        
+                        if e == nil { break }
+                        
+                        if isDrawSteppedEnabled
+                        {
+                            _lineSegments[1] = CGPoint(x: CGFloat(e.x), y: _lineSegments[0].y)
+                            _lineSegments[2] = _lineSegments[1]
+                            _lineSegments[3] = CGPoint(x: CGFloat(e.x), y: CGFloat(e.y * phaseY))
+                        }
+                        else
+                        {
+                            _lineSegments[1] = CGPoint(x: CGFloat(e.x), y: CGFloat(e.y * phaseY))
+                        }
+                    }
+                    else
+                    {
+                        _lineSegments[1] = _lineSegments[0]
+                    }
+                    
+                    _lineSegments = _lineSegments.map { $0.applying(valueToPixelMatrix) }
+                    
+                    if (!viewPortHandler.isInBoundsRight(_lineSegments[0].x))
+                    {
+                        break
+                    }
+                    
+                    // Determine the start and end coordinates of the line, and make sure they differ.
+                    guard
+                        let firstCoordinate = _lineSegments.first,
+                        let lastCoordinate = _lineSegments.last,
+                        firstCoordinate != lastCoordinate else { continue }
+                    
+                    // make sure the lines don't do shitty things outside bounds
+                    if !viewPortHandler.isInBoundsLeft(lastCoordinate.x) ||
+                        !viewPortHandler.isInBoundsTop(max(firstCoordinate.y, lastCoordinate.y)) ||
+                        !viewPortHandler.isInBoundsBottom(min(firstCoordinate.y, lastCoordinate.y))
+                    {
+                        continue
+                    }
+                    
+                    // get the color that is set for this line-segment
+                    context.setStrokeColor(dataSet.color(atIndex: j).cgColor)
+                    context.strokeLineSegments(between: _lineSegments)
+                }
+            }
+            else
+            { // only one color per dataset
+                guard dataSet.entryForIndex(_xBounds.min) != nil else {
+                    return
+                }
+                
+                var firstPoint = true
+                
+                let path = CGMutablePath()
+                for x in stride(from: _xBounds.min, through: _xBounds.range + _xBounds.min, by: 1)
+                {
+                    guard let e1 = dataSet.entryForIndex(x == 0 ? 0 : (x - 1)) else { continue }
+                    guard let e2 = dataSet.entryForIndex(x) else { continue }
+                    
+                    let startPoint =
                         CGPoint(
-                            x: CGFloat(e2.x),
+                            x: CGFloat(e1.x),
                             y: CGFloat(e1.y * phaseY))
                         .applying(valueToPixelMatrix)
-                    path.addLine(to: steppedPoint)
+                    
+                    if firstPoint
+                    {
+                        path.move(to: startPoint)
+                        firstPoint = false
+                    }
+                    else
+                    {
+                        path.addLine(to: startPoint)
+                    }
+                    
+                    if isDrawSteppedEnabled
+                    {
+                        let steppedPoint =
+                            CGPoint(
+                                x: CGFloat(e2.x),
+                                y: CGFloat(e1.y * phaseY))
+                            .applying(valueToPixelMatrix)
+                        path.addLine(to: steppedPoint)
+                    }
+                    
+                    let endPoint =
+                        CGPoint(
+                            x: CGFloat(e2.x),
+                            y: CGFloat(e2.y * phaseY))
+                        .applying(valueToPixelMatrix)
+                    path.addLine(to: endPoint)
                 }
-
-                let endPoint =
-                    CGPoint(
-                        x: CGFloat(e2.x),
-                        y: CGFloat(e2.y * phaseY))
-                    .applying(valueToPixelMatrix)
-                path.addLine(to: endPoint)
-            }
-            
-            if !firstPoint
-            {
-                if dataSet.isDrawLineWithGradientEnabled {
-                    drawGradientLine(context: context, dataSet: dataSet, spline: path, matrix: valueToPixelMatrix)
-                } else {
-                    context.beginPath()
-                    context.addPath(path)
-                    context.setStrokeColor(dataSet.color(atIndex: 0).cgColor)
-                    context.strokePath()
+                
+                if !firstPoint
+                {
+                    if dataSet.isDrawLineWithGradientEnabled {
+                        drawGradientLine(context: context, dataSet: dataSet, spline: path, matrix: valueToPixelMatrix)
+                    } else {
+                        context.beginPath()
+                        context.addPath(path)
+                        context.setStrokeColor(dataSet.color(atIndex: 0).cgColor)
+                        context.strokePath()
+                    }
                 }
             }
         }
@@ -520,7 +541,7 @@ open class LineChartRenderer: LineRadarRenderer
             let dataProvider = dataProvider,
             let lineData = dataProvider.lineData
         else { return }
-
+        
         if isDrawingValuesAllowed(dataProvider: dataProvider)
         {
             let phaseY = animator.phaseY
@@ -554,7 +575,7 @@ open class LineChartRenderer: LineRadarRenderer
                 }
                 
                 _xBounds.set(chart: dataProvider, dataSet: dataSet, animator: animator)
-
+                
                 for j in _xBounds
                 {
                     guard let e = dataSet.entryForIndex(j) else { break }
@@ -619,7 +640,7 @@ open class LineChartRenderer: LineRadarRenderer
         // If we redraw the data, remove and repopulate accessible elements to update label values and frames
         accessibleChartElements.removeAll()
         accessibilityOrderedElements = accessibilityCreateEmptyOrderedElements()
-
+        
         // Make the chart header the first element in the accessible elements array
         if let chart = dataProvider as? LineChartView {
             let element = createAccessibleHeader(usingChart: chart,
@@ -627,13 +648,13 @@ open class LineChartRenderer: LineRadarRenderer
                                                  withDefaultDescription: "Line Chart")
             accessibleChartElements.append(element)
         }
-
+        
         context.saveGState()
-
+        
         for i in lineData.indices
         {
             guard let dataSet = lineData[i] as? LineChartDataSetProtocol else { continue }
-
+            
             // Skip Circles and Accessibility if not enabled,
             // reduces CPU significantly if not needed
             if !dataSet.isVisible || !dataSet.isDrawCirclesEnabled || dataSet.entryCount == 0
@@ -661,7 +682,7 @@ open class LineChartRenderer: LineRadarRenderer
             for j in _xBounds
             {
                 guard let e = dataSet.entryForIndex(j) else { break }
-
+                
                 pt.x = CGFloat(e.x)
                 pt.y = CGFloat(e.y * phaseY)
                 pt = pt.applying(valueToPixelMatrix)
@@ -693,17 +714,17 @@ open class LineChartRenderer: LineRadarRenderer
                     { (element) in
                         element.accessibilityFrame = accessibilityRect
                     }
-
+                    
                     accessibilityOrderedElements[i].append(element)
                 }
-
+                
                 context.setFillColor(dataSet.getCircleColor(atIndex: j)!.cgColor)
-
+                
                 rect.origin.x = pt.x - circleRadius
                 rect.origin.y = pt.y - circleRadius
                 rect.size.width = circleDiameter
                 rect.size.height = circleDiameter
-
+                
                 if drawTransparentCircleHole
                 {
                     // Begin path for circle with hole
@@ -727,7 +748,7 @@ open class LineChartRenderer: LineRadarRenderer
                     if drawCircleHole
                     {
                         context.setFillColor(dataSet.circleHoleColor!.cgColor)
-
+                        
                         // The hole rect
                         rect.origin.x = pt.x - circleHoleRadius
                         rect.origin.y = pt.y - circleHoleRadius
@@ -741,7 +762,7 @@ open class LineChartRenderer: LineRadarRenderer
         }
         
         context.restoreGState()
-
+        
         // Merge nested ordered arrays into the single accessibleChartElements.
         accessibleChartElements.append(contentsOf: accessibilityOrderedElements.flatMap { $0 } )
         accessibilityPostLayoutChangedNotification()
@@ -770,7 +791,7 @@ open class LineChartRenderer: LineRadarRenderer
             {
                 continue
             }
-
+            
             context.setStrokeColor(set.highlightColor.cgColor)
             context.setLineWidth(set.highlightLineWidth)
             if set.highlightLineDashLengths != nil
@@ -802,7 +823,7 @@ open class LineChartRenderer: LineRadarRenderer
         
         context.restoreGState()
     }
-
+    
     func drawGradientLine(context: CGContext, dataSet: LineChartDataSetProtocol, spline: CGPath, matrix: CGAffineTransform)
     {
         guard let gradientPositions = dataSet.gradientPositions else
@@ -810,18 +831,18 @@ open class LineChartRenderer: LineRadarRenderer
             assertionFailure("Must set `gradientPositions if `dataSet.isDrawLineWithGradientEnabled` is true")
             return
         }
-
+        
         // `insetBy` is applied since bounding box
         // doesn't take into account line width
         // so that peaks are trimmed since
         // gradient start and gradient end calculated wrong
         let boundingBox = spline.boundingBox
             .insetBy(dx: -dataSet.lineWidth / 2, dy: -dataSet.lineWidth / 2)
-
+        
         guard !boundingBox.isNull, !boundingBox.isInfinite, !boundingBox.isEmpty else {
             return
         }
-
+        
         let gradientStart = CGPoint(x: 0, y: boundingBox.minY)
         let gradientEnd = CGPoint(x: 0, y: boundingBox.maxY)
         let gradientColorComponents: [CGFloat] = dataSet.colors
@@ -840,7 +861,7 @@ open class LineChartRenderer: LineRadarRenderer
                     / (boundingBox.maxY - boundingBox.minY)
                 return normalizedLocation.clamped(to: 0...1)
             }
-
+        
         let baseColorSpace = CGColorSpaceCreateDeviceRGB()
         guard let gradient = CGGradient(
                 colorSpace: baseColorSpace,
@@ -849,10 +870,10 @@ open class LineChartRenderer: LineRadarRenderer
                 count: gradientLocations.count) else {
             return
         }
-
+        
         context.saveGState()
         defer { context.restoreGState() }
-
+        
         context.beginPath()
         context.addPath(spline)
         context.replacePathWithStrokedPath()
@@ -865,13 +886,13 @@ open class LineChartRenderer: LineRadarRenderer
     private func accessibilityCreateEmptyOrderedElements() -> [[NSUIAccessibilityElement]]
     {
         guard let chart = dataProvider as? LineChartView else { return [] }
-
+        
         let dataSetCount = chart.lineData?.dataSetCount ?? 0
-
+        
         return Array(repeating: [NSUIAccessibilityElement](),
                      count: dataSetCount)
     }
-
+    
     /// Creates an NSUIAccessibleElement representing the smallest meaningful bar of the chart
     /// i.e. in case of a stacked chart, this returns each stack, not the combined bar.
     /// Note that it is marked internal to support subclass modification in the HorizontalBarChart.
@@ -883,27 +904,27 @@ open class LineChartRenderer: LineRadarRenderer
     {
         let element = NSUIAccessibilityElement(accessibilityContainer: container)
         let xAxis = container.xAxis
-
+        
         guard let e = dataSet.entryForIndex(idx) else { return element }
         guard let dataProvider = dataProvider else { return element }
-
+        
         // NOTE: The formatter can cause issues when the x-axis labels are consecutive ints.
         // i.e. due to the Double conversion, if there are more than one data set that are grouped,
         // there is the possibility of some labels being rounded up. A floor() might fix this, but seems to be a brute force solution.
         let label = xAxis.valueFormatter?.stringForValue(e.x, axis: xAxis) ?? "\(e.x)"
-
+        
         let elementValueText = dataSet.valueFormatter.stringForValue(e.y,
                                                                      entry: e,
                                                                      dataSetIndex: dataSetIndex,
                                                                      viewPortHandler: viewPortHandler)
-
+        
         let dataSetCount = dataProvider.lineData?.dataSetCount ?? -1
         let doesContainMultipleDataSets = dataSetCount > 1
-
+        
         element.accessibilityLabel = "\(doesContainMultipleDataSets ? (dataSet.label ?? "")  + ", " : "") \(label): \(elementValueText)"
-
+        
         modifier(element)
-
+        
         return element
     }
 }
