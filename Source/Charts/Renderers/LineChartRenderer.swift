@@ -44,12 +44,27 @@ open class LineChartRenderer: LineRadarRenderer
                     fatalError("Datasets for LineChartRenderer must conform to ILineChartDataSet")
                 }
                 
-                drawDataSet(context: context, dataSet: set as! ILineChartDataSet)
+                drawDataSet(context: context, dataSet: set as! ILineChartDataSet, fill: true)
+            }
+        }
+        
+        for i in 0 ..< lineData.dataSetCount
+        {
+            guard let set = lineData.getDataSetByIndex(i) else { continue }
+            
+            if set.isVisible
+            {
+                if !(set is ILineChartDataSet)
+                {
+                    fatalError("Datasets for LineChartRenderer must conform to ILineChartDataSet")
+                }
+                
+                drawDataSet(context: context, dataSet: set as! ILineChartDataSet, fill: false)
             }
         }
     }
     
-    @objc open func drawDataSet(context: CGContext, dataSet: ILineChartDataSet)
+    @objc open func drawDataSet(context: CGContext, dataSet: ILineChartDataSet, fill: Bool)
     {
         if dataSet.entryCount < 1
         {
@@ -75,19 +90,19 @@ open class LineChartRenderer: LineRadarRenderer
         {
         case .linear: fallthrough
         case .stepped:
-            drawLinear(context: context, dataSet: dataSet)
+            drawLinear(context: context, dataSet: dataSet, fill: fill)
             
         case .cubicBezier:
-            drawCubicBezier(context: context, dataSet: dataSet)
+            drawCubicBezier(context: context, dataSet: dataSet, fill: fill)
             
         case .horizontalBezier:
-            drawHorizontalBezier(context: context, dataSet: dataSet)
+            drawHorizontalBezier(context: context, dataSet: dataSet, fill: fill)
         }
         
         context.restoreGState()
     }
     
-    @objc open func drawCubicBezier(context: CGContext, dataSet: ILineChartDataSet)
+    @objc open func drawCubicBezier(context: CGContext, dataSet: ILineChartDataSet, fill: Bool)
     {
         guard let dataProvider = dataProvider else { return }
         
@@ -163,23 +178,26 @@ open class LineChartRenderer: LineRadarRenderer
         
         context.saveGState()
         
-        if dataSet.isDrawFilledEnabled
-        {
-            // Copy this path because we make changes to it
-            let fillPath = cubicPath.mutableCopy()
-            
-            drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
+        if fill {
+            if dataSet.isDrawFilledEnabled
+            {
+                // Copy this path because we make changes to it
+                let fillPath = cubicPath.mutableCopy()
+                
+                drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
+            }
         }
-        
-        context.beginPath()
-        context.addPath(cubicPath)
-        context.setStrokeColor(drawingColor.cgColor)
-        context.strokePath()
-        
-        context.restoreGState()
+        else {
+            context.beginPath()
+            context.addPath(cubicPath)
+            context.setStrokeColor(drawingColor.cgColor)
+            context.strokePath()
+            
+            context.restoreGState()
+        }
     }
     
-    @objc open func drawHorizontalBezier(context: CGContext, dataSet: ILineChartDataSet)
+    @objc open func drawHorizontalBezier(context: CGContext, dataSet: ILineChartDataSet, fill: Bool)
     {
         guard let dataProvider = dataProvider else { return }
         
@@ -230,20 +248,22 @@ open class LineChartRenderer: LineRadarRenderer
         
         context.saveGState()
         
-        if dataSet.isDrawFilledEnabled
-        {
-            // Copy this path because we make changes to it
-            let fillPath = cubicPath.mutableCopy()
+        if fill {
+            if dataSet.isDrawFilledEnabled
+            {
+                // Copy this path because we make changes to it
+                let fillPath = cubicPath.mutableCopy()
+                
+                drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
+            }
+        } else {
+            context.beginPath()
+            context.addPath(cubicPath)
+            context.setStrokeColor(drawingColor.cgColor)
+            context.strokePath()
             
-            drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
+            context.restoreGState()
         }
-        
-        context.beginPath()
-        context.addPath(cubicPath)
-        context.setStrokeColor(drawingColor.cgColor)
-        context.strokePath()
-        
-        context.restoreGState()
     }
     
     open func drawCubicFill(
@@ -285,7 +305,7 @@ open class LineChartRenderer: LineRadarRenderer
     
     private var _lineSegments = [CGPoint](repeating: CGPoint(), count: 2)
     
-    @objc open func drawLinear(context: CGContext, dataSet: ILineChartDataSet)
+    @objc open func drawLinear(context: CGContext, dataSet: ILineChartDataSet, fill: Bool)
     {
         guard let dataProvider = dataProvider else { return }
         
@@ -302,10 +322,14 @@ open class LineChartRenderer: LineRadarRenderer
         _xBounds.set(chart: dataProvider, dataSet: dataSet, animator: animator)
         
         // if drawing filled is enabled
-        if dataSet.isDrawFilledEnabled && entryCount > 0
-        {
-            drawLinearFill(context: context, dataSet: dataSet, trans: trans, bounds: _xBounds)
+        if fill {
+            if dataSet.isDrawFilledEnabled && entryCount > 0
+            {
+                drawLinearFill(context: context, dataSet: dataSet, trans: trans, bounds: _xBounds)
+                return
+            }
         }
+        
         
         context.saveGState()
 
