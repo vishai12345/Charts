@@ -256,14 +256,15 @@ open class LineChartRenderer: LineRadarRenderer
                 
                 drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
             }
-        } else {
+        } 
+        // else {
             context.beginPath()
             context.addPath(cubicPath)
             context.setStrokeColor(drawingColor.cgColor)
             context.strokePath()
             
             context.restoreGState()
-        }
+        // }
     }
     
     open func drawCubicFill(
