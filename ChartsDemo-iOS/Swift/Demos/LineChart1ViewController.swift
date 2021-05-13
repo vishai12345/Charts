@@ -109,13 +109,15 @@ class LineChart1ViewController: DemoBaseViewController {
     }
 
     func setDataCount(_ count: Int, range: UInt32) {
-        let values = (0..<count).map { (i) -> ChartDataEntry in
+        let values = (0..<4).map { (i) -> ChartDataEntry in
             let val = Double(arc4random_uniform(range) + 3)
             return ChartDataEntry(x: Double(i), y: val, icon: #imageLiteral(resourceName: "icon"))
         }
 
         let set1 = LineChartDataSet(entries: values, label: "DataSet 1")
         set1.drawIconsEnabled = false
+        set1.mode = .horizontalBezier
+        set1.isDrawLineWithGradientEnabled = true
         setup(set1)
 
         let value = ChartDataEntry(x: Double(3), y: 3)
@@ -137,10 +139,11 @@ class LineChart1ViewController: DemoBaseViewController {
         if dataSet.isDrawLineWithGradientEnabled {
             dataSet.lineDashLengths = nil
             dataSet.highlightLineDashLengths = nil
-            dataSet.setColors(.black, .red, .white)
+            dataSet.setColors(UIColor(red: 84/255, green: 54/255, blue: 10/255, alpha: 1), UIColor(red: 225/255, green: 189/255, blue: 134/255, alpha: 1))
+            
             dataSet.setCircleColor(.black)
-            dataSet.gradientPositions = [0, 40, 100]
-            dataSet.lineWidth = 1
+            dataSet.gradientPositions = [0,100]
+            dataSet.lineWidth = 10
             dataSet.circleRadius = 3
             dataSet.drawCircleHoleEnabled = false
             dataSet.valueFont = .systemFont(ofSize: 9)
@@ -153,7 +156,7 @@ class LineChart1ViewController: DemoBaseViewController {
             dataSet.setColor(.black)
             dataSet.setCircleColor(.black)
             dataSet.gradientPositions = nil
-            dataSet.lineWidth = 1
+            dataSet.lineWidth = 5
             dataSet.circleRadius = 3
             dataSet.drawCircleHoleEnabled = false
             dataSet.valueFont = .systemFont(ofSize: 9)

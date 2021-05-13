@@ -822,8 +822,8 @@ open class LineChartRenderer: LineRadarRenderer
             return
         }
 
-        let gradientStart = CGPoint(x: 0, y: boundingBox.minY)
-        let gradientEnd = CGPoint(x: 0, y: boundingBox.maxY)
+        let gradientStart = CGPoint(x: boundingBox.minX, y: 0)
+        let gradientEnd = CGPoint(x: boundingBox.maxX, y: 0)
         let gradientColorComponents: [CGFloat] = dataSet.colors
             .reversed()
             .reduce(into: []) { (components, color) in
@@ -834,10 +834,10 @@ open class LineChartRenderer: LineRadarRenderer
             }
         let gradientLocations: [CGFloat] = gradientPositions.reversed()
             .map { (position) in
-                let location = CGPoint(x: boundingBox.minX, y: position)
+                let location = CGPoint(x: position, y: boundingBox.minY)
                     .applying(matrix)
-                let normalizedLocation = (location.y - boundingBox.minY)
-                    / (boundingBox.maxY - boundingBox.minY)
+                let normalizedLocation = (location.x - boundingBox.minX)
+                    / (boundingBox.maxX - boundingBox.minX)
                 return normalizedLocation.clamped(to: 0...1)
             }
 
