@@ -7,21 +7,21 @@
 //
 
 #if canImport(UIKit)
-    import UIKit
+import UIKit
 #endif
 import Charts
 
 class LineChart1ViewController: DemoBaseViewController {
-
+    
     @IBOutlet var chartView: LineChartView!
     @IBOutlet var sliderX: UISlider!
     @IBOutlet var sliderY: UISlider!
     @IBOutlet var sliderTextX: UITextField!
     @IBOutlet var sliderTextY: UITextField!
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         // Do any additional setup after loading the view.
         self.title = "Line Chart 1"
         self.options = [.toggleValues,
@@ -82,7 +82,7 @@ class LineChart1ViewController: DemoBaseViewController {
         
         //[_chartView.viewPortHandler setMaximumScaleY: 2.f];
         //[_chartView.viewPortHandler setMaximumScaleX: 2.f];
-
+        
         let marker = BalloonMarker(color: UIColor(white: 180/255, alpha: 1),
                                    font: .systemFont(ofSize: 12),
                                    textColor: .white,
@@ -99,7 +99,7 @@ class LineChart1ViewController: DemoBaseViewController {
         
         chartView.animate(xAxisDuration: 2.5)
     }
-
+    
     override func updateChartData() {
         if self.shouldHideData {
             chartView.data = nil
@@ -108,7 +108,7 @@ class LineChart1ViewController: DemoBaseViewController {
         
         self.setDataCount(Int(sliderX.value), range: UInt32(sliderY.value))
     }
-
+    
     func setDataCount(_ count: Int, range: UInt32) {
         let values = (0..<count).map { (i) -> ChartDataEntry in
             let val = Double(arc4random_uniform(range) + 3)
@@ -118,17 +118,8 @@ class LineChart1ViewController: DemoBaseViewController {
         let set1 = LineChartDataSet(entries: values, label: "DataSet 1")
         set1.drawIconsEnabled = false
         
-        set1.lineDashLengths = [5, 2.5]
-        set1.highlightLineDashLengths = [5, 2.5]
-        set1.setColor(.black)
-        set1.setCircleColor(.black)
-        set1.lineWidth = 1
-        set1.circleRadius = 3
-        set1.drawCircleHoleEnabled = false
-        set1.valueFont = .systemFont(ofSize: 9)
-        set1.formLineDashLengths = [5, 2.5]
-        set1.formLineWidth = 1
-        set1.formSize = 15
+        set1.isDrawLineWithGradientEnabled = true
+        setup(set1)
         
         let gradientColors = [ChartColorTemplates.colorFromString("#00ff0000").cgColor,
                               ChartColorTemplates.colorFromString("#ffff0000").cgColor]
@@ -141,6 +132,36 @@ class LineChart1ViewController: DemoBaseViewController {
         let data = LineChartData(dataSet: set1)
         
         chartView.data = data
+    }
+    
+    private func setup(_ dataSet: LineChartDataSet) {
+        if dataSet.isDrawLineWithGradientEnabled {
+            dataSet.lineDashLengths = nil
+            dataSet.highlightLineDashLengths = nil
+            dataSet.setColors(.yellow, .red)
+            dataSet.setCircleColor(.black)
+            dataSet.gradientPositions = [0, 100]
+            dataSet.lineWidth = 5
+            dataSet.circleRadius = 3
+            dataSet.drawCircleHoleEnabled = false
+            dataSet.valueFont = .systemFont(ofSize: 9)
+            dataSet.formLineDashLengths = nil
+            dataSet.formLineWidth = 1
+            dataSet.formSize = 15
+        } else {
+            dataSet.lineDashLengths = [5, 2.5]
+            dataSet.highlightLineDashLengths = [5, 2.5]
+            dataSet.setColor(.black)
+            dataSet.setCircleColor(.black)
+            dataSet.gradientPositions = nil
+            dataSet.lineWidth = 1
+            dataSet.circleRadius = 3
+            dataSet.drawCircleHoleEnabled = false
+            dataSet.valueFont = .systemFont(ofSize: 9)
+            dataSet.formLineDashLengths = [5, 2.5]
+            dataSet.formLineWidth = 1
+            dataSet.formSize = 15
+        }
     }
     
     override func optionTapped(_ option: Option) {
@@ -179,7 +200,7 @@ class LineChart1ViewController: DemoBaseViewController {
             super.handleOption(option, forChartView: chartView)
         }
     }
-
+    
     @IBAction func slidersValueChanged(_ sender: Any?) {
         sliderTextX.text = "\(Int(sliderX.value))"
         sliderTextY.text = "\(Int(sliderY.value))"

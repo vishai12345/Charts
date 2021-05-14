@@ -23,6 +23,7 @@ enum Option {
     case toggleAutoScaleMinMax
     case toggleData
     case toggleBarBorders
+    case toggleGradientLine
     // CandleChart
     case toggleShadowColorSameAsCandle
     case toggleShowCandleBar
@@ -61,6 +62,7 @@ enum Option {
         case .toggleAutoScaleMinMax: return "Toggle auto scale min/max"
         case .toggleData: return "Toggle Data"
         case .toggleBarBorders: return "Toggle Bar Borders"
+        case .toggleGradientLine: return "Toggle Gradient Line"
         // CandleChart
         case .toggleShadowColorSameAsCandle: return "Toggle shadow same color"
         case .toggleShowCandleBar: return "Toggle show candle bar"

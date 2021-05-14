@@ -5,7 +5,7 @@ import Foundation
  types are aliased to either their UI* implementation (on iOS) or their NS* implementation (on OS X). */
 #if os(iOS) || os(tvOS)
 #if canImport(UIKit)
-    import UIKit
+import UIKit
 #endif
 
 public typealias NSUIFont = UIFont
@@ -27,15 +27,31 @@ public typealias NSUIScreen = UIScreen
 
 public typealias NSUIDisplayLink = CADisplayLink
 
+extension NSUIColor
+{
+    var nsuirgba: (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat)? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        
+        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return nil
+        }
+        
+        return (red: red, green: green, blue: blue, alpha: alpha)
+    }
+}
+
 extension NSUITapGestureRecognizer
 {
     @objc final func nsuiNumberOfTouches() -> Int
     {
         return numberOfTouches
     }
-
+    
     @objc final var nsuiNumberOfTapsRequired: Int
-        {
+    {
         get
         {
             return self.numberOfTapsRequired
@@ -53,7 +69,7 @@ extension NSUIPanGestureRecognizer
     {
         return numberOfTouches
     }
-
+    
     @objc final func nsuiLocationOfTouch(_ touch: Int, inView: UIView?) -> CGPoint
     {
         return super.location(ofTouch: touch, in: inView)
@@ -64,7 +80,7 @@ extension NSUIPanGestureRecognizer
 extension NSUIRotationGestureRecognizer
 {
     @objc final var nsuiRotation: CGFloat
-        {
+    {
         get { return rotation }
         set { rotation = newValue }
     }
@@ -75,7 +91,7 @@ extension NSUIRotationGestureRecognizer
 extension NSUIPinchGestureRecognizer
 {
     @objc final var nsuiScale: CGFloat
-        {
+    {
         get
         {
             return scale
@@ -85,7 +101,7 @@ extension NSUIPinchGestureRecognizer
             scale = newValue
         }
     }
-
+    
     @objc final func nsuiLocationOfTouch(_ touch: Int, inView: UIView?) -> CGPoint
     {
         return super.location(ofTouch: touch, in: inView)
@@ -99,42 +115,42 @@ open class NSUIView: UIView
     {
         self.nsuiTouchesBegan(touches, withEvent: event)
     }
-
+    
     public final override func touchesMoved(_ touches: Set<NSUITouch>, with event: NSUIEvent?)
     {
         self.nsuiTouchesMoved(touches, withEvent: event)
     }
-
+    
     public final override func touchesEnded(_ touches: Set<NSUITouch>, with event: NSUIEvent?)
     {
         self.nsuiTouchesEnded(touches, withEvent: event)
     }
-
+    
     public final override func touchesCancelled(_ touches: Set<NSUITouch>, with event: NSUIEvent?)
     {
         self.nsuiTouchesCancelled(touches, withEvent: event)
     }
-
+    
     @objc open func nsuiTouchesBegan(_ touches: Set<NSUITouch>, withEvent event: NSUIEvent?)
     {
         super.touchesBegan(touches, with: event!)
     }
-
+    
     @objc open func nsuiTouchesMoved(_ touches: Set<NSUITouch>, withEvent event: NSUIEvent?)
     {
         super.touchesMoved(touches, with: event!)
     }
-
+    
     @objc open func nsuiTouchesEnded(_ touches: Set<NSUITouch>, withEvent event: NSUIEvent?)
     {
         super.touchesEnded(touches, with: event!)
     }
-
+    
     @objc open func nsuiTouchesCancelled(_ touches: Set<NSUITouch>?, withEvent event: NSUIEvent?)
     {
         super.touchesCancelled(touches!, with: event!)
     }
-
+    
     @objc var nsuiLayer: CALayer?
     {
         return self.layer
@@ -152,7 +168,7 @@ extension UIView
 extension UIScrollView
 {
     @objc var nsuiIsScrollEnabled: Bool
-        {
+    {
         get { return isScrollEnabled }
         set { isScrollEnabled = newValue }
     }
@@ -238,44 +254,44 @@ public class NSUIDisplayLink
     private var timer: Timer?
     private var displayLink: CVDisplayLink?
     private var _timestamp: CFTimeInterval = 0.0
-
+    
     private weak var _target: AnyObject?
     private var _selector: Selector
-
+    
     public var timestamp: CFTimeInterval
     {
         return _timestamp
     }
-
-		init(target: Any, selector: Selector)
+    
+    init(target: Any, selector: Selector)
     {
         _target = target as AnyObject
         _selector = selector
-
+        
         if CVDisplayLinkCreateWithActiveCGDisplays(&displayLink) == kCVReturnSuccess
         {
-
+            
             CVDisplayLinkSetOutputCallback(displayLink!, { (displayLink, inNow, inOutputTime, flagsIn, flagsOut, userData) -> CVReturn in
-
+                
                 let _self = unsafeBitCast(userData, to: NSUIDisplayLink.self)
-                    
+                
                 _self._timestamp = CFAbsoluteTimeGetCurrent()
                 _self._target?.performSelector(onMainThread: _self._selector, with: _self, waitUntilDone: false)
-                    
+                
                 return kCVReturnSuccess
-                }, Unmanaged.passUnretained(self).toOpaque())
+            }, Unmanaged.passUnretained(self).toOpaque())
         }
         else
         {
             timer = Timer(timeInterval: 1.0 / 60.0, target: target, selector: selector, userInfo: nil, repeats: true)
         }
-		}
-
+    }
+    
     deinit
     {
         stop()
     }
-
+    
     open func add(to runloop: RunLoop, forMode mode: RunLoop.Mode)
     {
         if displayLink != nil
@@ -287,12 +303,12 @@ public class NSUIDisplayLink
             runloop.add(timer!, forMode: mode)
         }
     }
-
+    
     open func remove(from: RunLoop, forMode: RunLoop.Mode)
     {
         stop()
     }
-
+    
     private func stop()
     {
         if displayLink != nil
@@ -306,6 +322,26 @@ public class NSUIDisplayLink
     }
 }
 
+extension NSUIColor
+{
+    var nsuirgba: (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat)? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        
+        guard let colorSpaceModel = cgColor.colorSpace?.model else {
+            return nil
+        }
+        guard colorSpaceModel == .rgb else {
+            return nil
+        }
+        
+        getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return (red: red, green: green, blue: blue, alpha: alpha)
+    }
+}
+
 /** The 'tap' gesture is mapped to clicks. */
 extension NSUITapGestureRecognizer
 {
@@ -313,9 +349,9 @@ extension NSUITapGestureRecognizer
     {
         return 1
     }
-
+    
     final var nsuiNumberOfTapsRequired: Int
-        {
+    {
         get
         {
             return self.numberOfClicksRequired
@@ -333,7 +369,7 @@ extension NSUIPanGestureRecognizer
     {
         return 1
     }
-
+    
     /// FIXME: Currently there are no more than 1 touch in OSX gestures, and not way to create custom touch gestures.
     final func nsuiLocationOfTouch(_ touch: Int, inView: NSView?) -> NSPoint
     {
@@ -348,9 +384,9 @@ extension NSUIRotationGestureRecognizer
     {
         return 0.1
     }
-
+    
     final var nsuiRotation: CGFloat
-        {
+    {
         get { return -rotation }
         set { rotation = -newValue }
     }
@@ -359,7 +395,7 @@ extension NSUIRotationGestureRecognizer
 extension NSUIPinchGestureRecognizer
 {
     final var nsuiScale: CGFloat
-        {
+    {
         get
         {
             return magnification + 1.0
@@ -369,7 +405,7 @@ extension NSUIPinchGestureRecognizer
             magnification = newValue - 1.0
         }
     }
-
+    
     /// FIXME: Currently there are no more than 1 touch in OSX gestures, and not way to create custom touch gestures.
     final func nsuiLocationOfTouch(_ touch: Int, inView view: NSView?) -> NSPoint
     {
@@ -400,71 +436,71 @@ open class NSUIView: NSView
     /// It ensures parity with the iOS element ordering as well as numbered counts of chart components.
     /// (See Platform+Accessibility for details)
     private let role: NSAccessibility.Role = .list
-
+    
     public override init(frame frameRect: NSRect)
     {
         super.init(frame: frameRect)
         setAccessibilityRole(role)
     }
-
+    
     required public init?(coder decoder: NSCoder)
     {
         super.init(coder: decoder)
         setAccessibilityRole(role)
     }
-
+    
     public final override var isFlipped: Bool
     {
         return true
     }
-
+    
     func setNeedsDisplay()
     {
         self.setNeedsDisplay(self.bounds)
     }
-
+    
     public final override func touchesBegan(with event: NSEvent)
     {
         self.nsuiTouchesBegan(event.touches(matching: .any, in: self), withEvent: event)
     }
-
+    
     public final override func touchesEnded(with event: NSEvent)
     {
         self.nsuiTouchesEnded(event.touches(matching: .any, in: self), withEvent: event)
     }
-
+    
     public final override func touchesMoved(with event: NSEvent)
     {
         self.nsuiTouchesMoved(event.touches(matching: .any, in: self), withEvent: event)
     }
-
+    
     open override func touchesCancelled(with event: NSEvent)
     {
         self.nsuiTouchesCancelled(event.touches(matching: .any, in: self), withEvent: event)
     }
-
+    
     open func nsuiTouchesBegan(_ touches: Set<NSUITouch>, withEvent event: NSUIEvent?)
     {
         super.touchesBegan(with: event!)
     }
-
+    
     open func nsuiTouchesMoved(_ touches: Set<NSUITouch>, withEvent event: NSUIEvent?)
     {
         super.touchesMoved(with: event!)
     }
-
+    
     open func nsuiTouchesEnded(_ touches: Set<NSUITouch>, withEvent event: NSUIEvent?)
     {
         super.touchesEnded(with: event!)
     }
-
+    
     open func nsuiTouchesCancelled(_ touches: Set<NSUITouch>?, withEvent event: NSUIEvent?)
     {
         super.touchesCancelled(with: event!)
     }
-
+    
     open var backgroundColor: NSUIColor?
-        {
+    {
         get
         {
             return self.layer?.backgroundColor == nil
@@ -477,7 +513,7 @@ open class NSUIView: NSView
             self.layer?.backgroundColor = newValue == nil ? nil : newValue!.cgColor
         }
     }
-
+    
     final var nsuiLayer: CALayer?
     {
         return self.layer
@@ -577,19 +613,19 @@ func NSUIGraphicsBeginImageContextWithOptions(_ size: CGSize, _ opaque: Bool, _ 
     {
         scale = NSScreen.main?.backingScaleFactor ?? 1.0
     }
-
+    
     let width = Int(size.width * scale)
     let height = Int(size.height * scale)
-
+    
     if width > 0 && height > 0
     {
         imageContextStack.append(scale)
-
+        
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-
+        
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 4*width, space: colorSpace, bitmapInfo: (opaque ?  CGImageAlphaInfo.noneSkipFirst.rawValue : CGImageAlphaInfo.premultipliedFirst.rawValue))
-            else { return }
-
+        else { return }
+        
         ctx.concatenate(CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: CGFloat(height)))
         ctx.scaleBy(x: scale, y: scale)
         NSUIGraphicsPushContext(ctx)
@@ -601,8 +637,8 @@ func NSUIGraphicsGetImageFromCurrentImageContext() -> NSUIImage?
     if !imageContextStack.isEmpty
     {
         guard let ctx = NSUIGraphicsGetCurrentContext()
-            else { return nil }
-
+        else { return nil }
+        
         let scale = imageContextStack.last!
         if let theCGImage = ctx.makeImage()
         {
